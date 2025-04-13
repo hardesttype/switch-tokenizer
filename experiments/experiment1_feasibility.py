@@ -31,7 +31,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Experiment 1: Feasibility and Performance")
     
     # Dataset paths
-    parser.add_argument("--en_dataset", type=str, default="wikitext/wikitext-103-raw-v1", 
+    parser.add_argument("--en_dataset", type=str, default="Salesforce/wikitext", 
                         help="Path to English dataset")
     parser.add_argument("--ru_dataset", type=str, default="mc4", 
                         help="Path to Russian dataset")
@@ -88,8 +88,16 @@ def train_switchable_model(args):
     # Prepare datasets
     print("Preparing datasets...")
     dataset_configs = {
-        "EN": {"path": args.en_dataset, "split": f"train[:{args.data_limit}]"},
-        "RU": {"path": args.ru_dataset, "name": args.ru_subset, "split": f"train[:{args.data_limit}]"},
+        "EN": {
+            "path": args.en_dataset, 
+            "name": args.ru_subset,
+            "split": f"train[:{args.data_limit}]"
+        },
+        "RU": {
+            "path": args.ru_dataset, 
+            "name": args.ru_subset, 
+            "split": f"train[:{args.data_limit}]"
+        },
     }
     
     datasets = prepare_multilingual_datasets(
