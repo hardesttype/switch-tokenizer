@@ -182,7 +182,7 @@ def train_monolingual_models(args):
         
         # Load dataset
         if lang == "EN":
-            dataset = load_dataset(args.en_dataset, split=f"train[:{args.data_limit}]")
+            dataset = load_dataset(args.en_dataset, name=args.en_subset, split=f"train[:{args.data_limit}]")
         else:  # RU
             dataset = load_dataset(args.ru_dataset, name=args.ru_subset, split=f"train[:{args.data_limit}]")
         
