@@ -27,7 +27,7 @@ This approach keeps the model's vocab_size at 64k (plus a few special tokens), a
 ## Installation
 
 ```bash
-git clone https://github.com/yourusername/switch-tokenizer.git
+git clone https://github.com/hardesttype/switch-tokenizer.git
 cd switch-tokenizer
 pip install -r requirements.txt
 ```
