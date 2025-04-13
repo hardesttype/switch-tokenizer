@@ -31,7 +31,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Experiment 1: Feasibility and Performance")
     
     # Dataset paths
-    parser.add_argument("--en_dataset", type=str, default='wikimedia/wikipedia' # "Salesforce/wikitext", 
+    parser.add_argument("--en_dataset", type=str, default='wikimedia/wikipedia', # "Salesforce/wikitext", 
                         help="Path to English dataset")
     parser.add_argument("--en_subset", type=str, default='20231101.en', # "wikitext-103-v1", 
                         help="English dataset subset")

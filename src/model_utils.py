@@ -23,26 +23,22 @@ def create_model_with_switchable_tokenizer(
     Returns:
         PreTrainedModel instance configured with the tokenizer's vocabulary size
     """
-    # Start with the default config for the model
-    config = AutoConfig.from_pretrained(model_name_or_path)
-    
-    # Update vocab_size to match the switchable tokenizer
-    config.vocab_size = tokenizer.vocab_size
-    
-    # Apply any additional config overrides
-    if model_config:
-        for key, value in model_config.items():
-            setattr(config, key, value)
-    
-    # Create the model with the updated config
+    # Load the model with its original config first
     model = AutoModelForCausalLM.from_pretrained(
         model_name_or_path,
-        config=config,
         device_map=device_map,
     )
     
-    # Resize the token embeddings to match the switchable tokenizer vocab size
+    # Now resize the token embeddings to match the switchable tokenizer vocab size
     model.resize_token_embeddings(tokenizer.vocab_size)
+    
+    # Update the model's config to reflect the new vocab size
+    model.config.vocab_size = tokenizer.vocab_size
+    
+    # Apply any additional config overrides if provided
+    if model_config:
+        for key, value in model_config.items():
+            setattr(model.config, key, value)
     
     return model
 
