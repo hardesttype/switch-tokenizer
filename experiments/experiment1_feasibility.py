@@ -90,7 +90,7 @@ def train_switchable_model(args):
     dataset_configs = {
         "EN": {
             "path": args.en_dataset, 
-            "name": args.ru_subset,
+            "name": args.en_subset,
             "split": f"train[:{args.data_limit}]"
         },
         "RU": {
