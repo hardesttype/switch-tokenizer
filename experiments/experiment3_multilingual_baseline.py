@@ -37,11 +37,13 @@ def parse_args():
     )
     
     # Dataset paths
-    parser.add_argument("--en_dataset", type=str, default="wikitext/wikitext-103-raw-v1", 
+    parser.add_argument("--en_dataset", type=str, default="wikimedia/wikipedia", 
                         help="Path to English dataset")
-    parser.add_argument("--ru_dataset", type=str, default="mc4", 
+    parser.add_argument("--en_subset", type=str, default="20231101.en", 
+                        help="English dataset subset")
+    parser.add_argument("--ru_dataset", type=str, default="wikimedia/wikipedia", 
                         help="Path to Russian dataset")
-    parser.add_argument("--ru_subset", type=str, default="ru", 
+    parser.add_argument("--ru_subset", type=str, default="20231101.ru", 
                         help="Russian dataset subset")
     parser.add_argument("--data_limit", type=int, default=10000, 
                         help="Limit number of examples per language")
@@ -86,6 +88,7 @@ def load_and_prepare_data(args):
     corpus = load_multilingual_corpus(
         en_dataset_name=args.en_dataset,
         ru_dataset_name=args.ru_dataset,
+        en_subset=args.en_subset,
         ru_subset=args.ru_subset,
         limit=args.data_limit,
     )

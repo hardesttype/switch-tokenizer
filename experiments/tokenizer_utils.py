@@ -15,6 +15,7 @@ from transformers import AutoTokenizer, PreTrainedTokenizerFast
 def load_multilingual_corpus(
     en_dataset_name: str,
     ru_dataset_name: str,
+    en_subset: Optional[str] = None,
     ru_subset: Optional[str] = None,
     limit: int = 10000,
     text_column: str = "text",
@@ -25,6 +26,7 @@ def load_multilingual_corpus(
     Args:
         en_dataset_name: Name of the English dataset on Hugging Face
         ru_dataset_name: Name of the Russian dataset on Hugging Face
+        en_subset: Subset of the English dataset, if applicable
         ru_subset: Subset of the Russian dataset, if applicable
         limit: Maximum number of examples to load per language
         text_column: Name of the text column in the datasets
@@ -33,7 +35,10 @@ def load_multilingual_corpus(
         Dictionary with 'en' and 'ru' keys containing lists of texts
     """
     # Load English dataset
-    en_dataset = load_dataset(en_dataset_name, split=f"train[:{limit}]")
+    if en_subset:
+        en_dataset = load_dataset(en_dataset_name, name=en_subset, split=f"train[:{limit}]")
+    else:
+        en_dataset = load_dataset(en_dataset_name, split=f"train[:{limit}]")
     
     # Load Russian dataset
     if ru_subset:
