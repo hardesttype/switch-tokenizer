@@ -33,6 +33,8 @@ def parse_args():
     # Dataset paths
     parser.add_argument("--en_dataset", type=str, default="Salesforce/wikitext", 
                         help="Path to English dataset")
+    parser.add_argument("--en_subset", type=str, default="wikitext-103-v1", 
+                        help="English dataset subset")
     parser.add_argument("--ru_dataset", type=str, default="mc4", 
                         help="Path to Russian dataset")
     parser.add_argument("--ru_subset", type=str, default="ru", 
