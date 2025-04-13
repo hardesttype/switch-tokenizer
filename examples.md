@@ -62,8 +62,8 @@ tokenizer = SwitchableTokenizer(
 
 # Prepare datasets
 dataset_configs = {
-    "EN": {"path": "wikitext/wikitext-2-raw-v1"},
-    "RU": {"path": "mc4", "name": "ru", "split": "train[:1000]"},  # Limit size for example
+    "EN": {"path": "wikimedia/wikipedia", "name": "20231101.en"},
+    "RU": {"path": "wikimedia/wikipedia", "name": "20231101.ru", "split": "train[:1000]"},  # Limit size for example
 }
 
 datasets = prepare_multilingual_datasets(

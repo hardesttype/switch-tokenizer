@@ -14,9 +14,9 @@ setup(
     description="A multilingual tokenizer implementation using shared 64k vocabulary space",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/switch-tokenizer",
+    url="https://github.com/hardesttype/switch-tokenizer",
     project_urls={
-        "Bug Tracker": "https://github.com/yourusername/switch-tokenizer/issues",
+        "Bug Tracker": "https://github.com/hardesttype/switch-tokenizer/issues",
     },
     classifiers=[
         "Programming Language :: Python :: 3",
