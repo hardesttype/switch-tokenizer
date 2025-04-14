@@ -335,51 +335,20 @@ def evaluate_models(args, switchable_model, switchable_tokenizer, switchable_dat
             tokenizer = monolingual_results[lang]["tokenizer"]
             test_dataset = monolingual_results[lang]["test_dataset"]
             
-            # Calculate perplexity
-            def calculate_mono_perplexity(model, dataset, tokenizer, device):
-                model.eval()
-                total_loss = 0
-                total_length = 0
-                
-                data_collator = DataCollatorForLanguageModeling(
-                    tokenizer=tokenizer,
-                    mlm=False,
-                )
-                
-                # Create batches
-                batch_size = args.batch_size
-                batches = []
-                for i in range(0, len(dataset), batch_size):
-                    batch = dataset[i:i+batch_size]
-                    batches.append(data_collator([{k: v for k, v in zip(batch.keys(), values)} 
-                                                 for values in zip(*batch.values())]))
-                
-                with torch.no_grad():
-                    for batch in tqdm(batches, desc=f"Calculating {lang} perplexity"):
-                        # Move batch to device
-                        input_ids = batch["input_ids"].to(device)
-                        labels = batch["labels"].to(device)
-                        attention_mask = None
-                        if "attention_mask" in batch:
-                            attention_mask = batch["attention_mask"].to(device)
-                        
-                        # Forward pass
-                        outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
-                        
-                        # Get loss
-                        loss = outputs.loss.item()
-                        length = (labels != -100).sum().item()
-                        
-                        total_loss += loss * length
-                        total_length += length
-                
-                # Calculate perplexity
-                avg_loss = total_loss / total_length if total_length > 0 else float('inf')
-                perplexity = np.exp(avg_loss)
-                
-                return perplexity
+            # Create DataLoader for the test dataset
+            data_collator = DataCollatorForLanguageModeling(
+                tokenizer=tokenizer,
+                mlm=False,
+            )
             
-            monolingual_ppl = calculate_mono_perplexity(model, test_dataset, tokenizer, args.device)
+            test_loader = torch.utils.data.DataLoader(
+                test_dataset,
+                batch_size=args.batch_size,
+                collate_fn=data_collator,
+            )
+            
+            # Calculate perplexity using the imported function
+            monolingual_ppl = calculate_perplexity(model, test_loader, args.device)
             results["monolingual"][lang] = monolingual_ppl
             print(f"{lang_name.capitalize()} monolingual model perplexity: {monolingual_ppl:.2f}")
     
