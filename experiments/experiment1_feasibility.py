@@ -182,7 +182,7 @@ def train_monolingual_models(args):
             
         # Set padding token if it doesn't exist
         if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
+            tokenizer.add_special_tokens({'pad_token': '[PAD]'})
         
         # Load dataset
         if lang == "EN":
