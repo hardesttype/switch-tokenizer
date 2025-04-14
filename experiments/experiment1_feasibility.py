@@ -12,7 +12,7 @@ import torch
 import numpy as np
 from transformers import (
     AutoTokenizer, AutoModelForCausalLM, Trainer, TrainingArguments,
-    DataCollatorForLanguageModeling, set_seed
+    DataCollatorForLanguageModeling, set_seed, AutoConfig
 )
 from datasets import load_dataset
 import matplotlib.pyplot as plt
@@ -50,6 +50,8 @@ def parse_args():
     # Base model
     parser.add_argument("--base_model", type=str, default="gpt2-medium", 
                         help="Base model architecture")
+    parser.add_argument("--from_scratch", action="store_true", 
+                        help="Train models from scratch instead of fine-tuning")
     
     # Output directory
     parser.add_argument("--output_dir", type=str, default="./experiment1_output", 
@@ -115,6 +117,7 @@ def train_switchable_model(args):
     model = create_model_with_switchable_tokenizer(
         model_name_or_path=args.base_model,
         tokenizer=tokenizer,
+        from_scratch=args.from_scratch,
     )
     model.to(args.device)
     
@@ -217,11 +220,15 @@ def train_monolingual_models(args):
         )
         
         # Initialize model
-        model = AutoModelForCausalLM.from_pretrained(args.base_model)
-        
-        # Resize token embeddings if needed
-        if len(tokenizer) != model.config.vocab_size:
-            model.resize_token_embeddings(len(tokenizer))
+        if args.from_scratch:
+            config = AutoConfig.from_pretrained(args.base_model)
+            config.vocab_size = len(tokenizer)
+            model = AutoModelForCausalLM.from_config(config)
+        else:
+            model = AutoModelForCausalLM.from_pretrained(args.base_model)
+            # Resize token embeddings if needed
+            if len(tokenizer) != model.config.vocab_size:
+                model.resize_token_embeddings(len(tokenizer))
         
         model.to(args.device)
         
@@ -346,10 +353,14 @@ def evaluate_models(args, switchable_model, switchable_tokenizer, switchable_dat
             batches = []
             for i in range(0, len(test_dataset), args.batch_size):
                 batch = test_dataset[i:i+args.batch_size]
+                # Get the keys from the first item in the batch
                 batch_dict = {}
-                for key in batch.features.keys():
-                    batch_dict[key] = [batch[j][key] for j in range(len(batch))]
-                batches.append(data_collator(batch_dict))
+                if len(batch) > 0:
+                    # Get all keys from the dataset features
+                    keys = test_dataset.features.keys() if hasattr(test_dataset, 'features') else list(batch[0].keys())
+                    for key in keys:
+                        batch_dict[key] = [batch[j][key] for j in range(len(batch))]
+                    batches.append(data_collator(batch_dict))
             
             # Define a custom dataloader that yields these batches
             def custom_loader():
@@ -439,6 +450,13 @@ def main():
     results_file = os.path.join(args.output_dir, "experiment1_results.txt")
     with open(results_file, "w") as f:
         f.write("=== Experiment 1: Feasibility and Performance ===\n\n")
+        
+        # Write training approach
+        training_type = "from scratch" if args.from_scratch else "fine-tuned"
+        f.write(f"Models were trained {training_type} on {args.data_limit} examples per language for {args.epochs} epochs.\n")
+        f.write(f"Base model: {args.base_model}\n")
+        f.write(f"English tokenizer: {args.en_tokenizer}\n")
+        f.write(f"Russian tokenizer: {args.ru_tokenizer}\n\n")
         
         # Write switchable model results
         f.write("Switchable Model Perplexity:\n")

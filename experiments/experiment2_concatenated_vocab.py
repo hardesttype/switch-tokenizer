@@ -12,7 +12,7 @@ import torch
 import numpy as np
 from transformers import (
     AutoTokenizer, AutoModelForCausalLM, Trainer, TrainingArguments,
-    DataCollatorForLanguageModeling, set_seed
+    DataCollatorForLanguageModeling, set_seed, AutoConfig
 )
 from datasets import Dataset
 import matplotlib.pyplot as plt
@@ -50,6 +50,8 @@ def parse_args():
     # Base model
     parser.add_argument("--base_model", type=str, default="gpt2-medium", 
                         help="Base model architecture")
+    parser.add_argument("--from_scratch", action="store_true", 
+                        help="Train models from scratch instead of fine-tuning")
     
     # Output directory
     parser.add_argument("--output_dir", type=str, default="./experiment2_output", 
@@ -215,6 +217,7 @@ def train_switchable_model(args, switchable_tokenizer_dir, train_corpus, test_co
     model = create_model_with_switchable_tokenizer(
         model_name_or_path=args.base_model,
         tokenizer=tokenizer,
+        from_scratch=args.from_scratch,
     )
     model.to(args.device)
     
@@ -314,10 +317,15 @@ def train_concatenated_model(args, concat_tokenizer_dir, train_corpus, test_corp
     )
     
     # Initialize model
-    model = AutoModelForCausalLM.from_pretrained(args.base_model)
+    if args.from_scratch:
+        config = AutoConfig.from_pretrained(args.base_model)
+        config.vocab_size = len(tokenizer)
+        model = AutoModelForCausalLM.from_config(config)
+    else:
+        model = AutoModelForCausalLM.from_pretrained(args.base_model)
+        # Resize token embeddings to match the concatenated tokenizer
+        model.resize_token_embeddings(len(tokenizer))
     
-    # Resize token embeddings to match the concatenated tokenizer
-    model.resize_token_embeddings(len(tokenizer))
     model.to(args.device)
     
     # Create data collator
@@ -569,6 +577,10 @@ def main():
     results_file = os.path.join(args.output_dir, "experiment2_results.txt")
     with open(results_file, "w") as f:
         f.write("=== Experiment 2: Comparison vs. Concatenated Vocab ===\n\n")
+        
+        # Write training approach
+        training_type = "from scratch" if args.from_scratch else "fine-tuned"
+        f.write(f"Models were trained {training_type}\n\n")
         
         # Write switchable model results
         f.write("Switchable Model (64k vocabulary):\n")
