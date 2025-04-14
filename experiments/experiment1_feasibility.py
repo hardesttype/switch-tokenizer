@@ -301,7 +301,7 @@ def evaluate_models(args, switchable_model, switchable_tokenizer, switchable_dat
         # Create dataset with just this language
         dataset_config = {
             lang: {"path": args.en_dataset if lang == "EN" else args.ru_dataset,
-                  "name": args.ru_subset if lang == "RU" else None,
+                  "name": args.en_subset if lang == "EN" else args.ru_subset,
                   "split": f"test[:{args.data_limit // 10}]"}
         }
         
