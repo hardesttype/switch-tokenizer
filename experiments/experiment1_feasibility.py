@@ -7,15 +7,21 @@ then evaluates and compares their performance on held-out test sets.
 """
 
 import os
+import sys
 import argparse
 import torch
 import numpy as np
+
+# Add the parent directory to the path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from transformers import (
     AutoTokenizer, AutoModelForCausalLM, Trainer, TrainingArguments,
     DataCollatorForLanguageModeling, set_seed, AutoConfig
 )
 from datasets import load_dataset
 import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader
 
 from src.switch_tokenizer import SwitchableTokenizer
 from src.model_utils import create_model_with_switchable_tokenizer
@@ -307,70 +313,70 @@ def evaluate_models(args, switchable_model, switchable_tokenizer, switchable_dat
     # Evaluate switchable model on each language
     for lang in ["EN", "RU"]:
         # Create dataset with just this language
-        dataset_config = {
-            lang: {"path": args.en_dataset if lang == "EN" else args.ru_dataset,
-                  "name": args.en_subset if lang == "EN" else args.ru_subset,
-                  "split": f"train[:{args.data_limit // 10}]"}
-        }
-        
-        lang_datasets = prepare_multilingual_datasets(
-            tokenizer=switchable_tokenizer,
-            dataset_configs=dataset_config,
-            max_length=args.max_seq_length,
-            train_test_split=None,
-        )
-        
-        # Create data loader
-        lang_loaders = create_data_loaders(
-            datasets={"eval": lang_datasets["train"]},
-            collator=SwitchableDataCollator(tokenizer=switchable_tokenizer, mlm=False),
-            batch_size=args.batch_size,
-            shuffle_train=False,
-        )
-        
-        # Calculate perplexity
-        print(f"Evaluating switchable model on {lang} test set...")
-        lang_ppl = calculate_perplexity(switchable_model, lang_loaders["eval"], args.device)
-        results["switchable"][lang] = lang_ppl
-        print(f"Switchable model {lang} perplexity: {lang_ppl:.2f}")
+        try:
+            dataset_config = {
+                lang: {"path": args.en_dataset if lang == "EN" else args.ru_dataset,
+                      "name": args.en_subset if lang == "EN" else args.ru_subset,
+                      "split": f"train[:{args.data_limit // 10}]"}
+            }
+            
+            lang_datasets = prepare_multilingual_datasets(
+                tokenizer=switchable_tokenizer,
+                dataset_configs=dataset_config,
+                max_length=args.max_seq_length,
+                train_test_split=None,
+            )
+            
+            # Create data loader
+            lang_loaders = create_data_loaders(
+                datasets={"eval": lang_datasets["train"]},
+                collator=SwitchableDataCollator(tokenizer=switchable_tokenizer, mlm=False),
+                batch_size=args.batch_size,
+                shuffle_train=False,
+            )
+            
+            # Calculate perplexity
+            print(f"Evaluating switchable model on {lang} test set...")
+            lang_ppl = calculate_perplexity(switchable_model, lang_loaders["eval"], args.device)
+            results["switchable"][lang] = lang_ppl
+            print(f"Switchable model {lang} perplexity: {lang_ppl:.2f}")
+        except Exception as e:
+            print(f"Error evaluating switchable model on {lang}: {e}")
     
     # Evaluate monolingual models
     for lang, lang_name in [("EN", "english"), ("RU", "russian")]:
         if lang in monolingual_results:
             print(f"Evaluating {lang_name} monolingual model...")
             
-            model = monolingual_results[lang]["model"]
-            tokenizer = monolingual_results[lang]["tokenizer"]
-            test_dataset = monolingual_results[lang]["test_dataset"]
-            
-            # Create DataLoader for the test dataset
-            data_collator = DataCollatorForLanguageModeling(
-                tokenizer=tokenizer,
-                mlm=False,
-            )
-            
-            # Custom batching to ensure proper collation
-            batches = []
-            for i in range(0, len(test_dataset), args.batch_size):
-                batch = test_dataset[i:i+args.batch_size]
-                # Get the keys from the first item in the batch
-                batch_dict = {}
-                if len(batch) > 0:
-                    # Get all keys from the dataset features
-                    keys = test_dataset.features.keys() if hasattr(test_dataset, 'features') else list(batch[0].keys())
-                    for key in keys:
-                        batch_dict[key] = [batch[j][key] for j in range(len(batch))]
-                    batches.append(data_collator(batch_dict))
-            
-            # Define a custom dataloader that yields these batches
-            def custom_loader():
-                for batch in batches:
-                    yield batch
-            
-            # Calculate perplexity using the imported function
-            monolingual_ppl = calculate_perplexity(model, custom_loader(), args.device)
-            results["monolingual"][lang] = monolingual_ppl
-            print(f"{lang_name.capitalize()} monolingual model perplexity: {monolingual_ppl:.2f}")
+            try:
+                model = monolingual_results[lang]["model"]
+                tokenizer = monolingual_results[lang]["tokenizer"]
+                test_dataset = monolingual_results[lang]["test_dataset"]
+                
+                # Create DataLoader for the test dataset
+                data_collator = DataCollatorForLanguageModeling(
+                    tokenizer=tokenizer,
+                    mlm=False,
+                )
+                
+                # Use PyTorch's DataLoader with the collate function
+                test_loader = DataLoader(
+                    test_dataset, 
+                    batch_size=args.batch_size,
+                    collate_fn=data_collator
+                )
+                
+                # Print debug information
+                print(f"Created test loader for {lang_name} with dataset size: {len(test_dataset)}")
+                
+                # Calculate perplexity
+                monolingual_ppl = calculate_perplexity(model, test_loader, args.device)
+                results["monolingual"][lang] = monolingual_ppl
+                print(f"{lang_name.capitalize()} monolingual model perplexity: {monolingual_ppl:.2f}")
+            except Exception as e:
+                print(f"Error evaluating {lang_name} monolingual model: {e}")
+                import traceback
+                traceback.print_exc()
     
     return results
 
@@ -428,13 +434,20 @@ def main():
     args = parse_args()
     set_seed(args.seed)
     
+    print("Starting Experiment 1...")
+    print(f"Using device: {args.device}")
+    print(f"Training from scratch: {getattr(args, 'from_scratch', False)}")
+    
     # Step 1: Train the switchable tokenizer model
+    print("\nStep 1: Training switchable tokenizer model...")
     switchable_model, switchable_tokenizer, switchable_datasets = train_switchable_model(args)
     
     # Step 2: Train monolingual models
+    print("\nStep 2: Training monolingual models...")
     monolingual_results = train_monolingual_models(args)
     
     # Step 3: Evaluate the models
+    print("\nStep 3: Evaluating models...")
     results = evaluate_models(
         args,
         switchable_model,
@@ -444,6 +457,7 @@ def main():
     )
     
     # Step 4: Plot the results
+    print("\nStep 4: Plotting results...")
     plot_results(results, args.output_dir)
     
     # Step 5: Save the results
