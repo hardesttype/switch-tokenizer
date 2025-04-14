@@ -285,7 +285,7 @@ def train_switchable_model(args, tokenizer, train_dataset, test_dataset):
         logging_steps=100,
         save_steps=1000,
         eval_steps=1000,
-        evaluation_strategy="steps",
+        do_eval=True,  # Enable evaluation during training
         seed=args.seed,
     )
     
@@ -340,7 +340,7 @@ def train_standard_model(args, tokenizer, train_dataset, test_dataset):
         logging_steps=100,
         save_steps=1000,
         eval_steps=1000,
-        evaluation_strategy="steps",
+        do_eval=True,  # Enable evaluation during training
         seed=args.seed,
     )
     

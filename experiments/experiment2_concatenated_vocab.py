@@ -239,7 +239,7 @@ def train_switchable_model(args, switchable_tokenizer_dir, train_corpus, test_co
         logging_steps=100,
         save_steps=1000,
         eval_steps=1000,
-        evaluation_strategy="steps",
+        do_eval=True,  # Enable evaluation during training
         seed=args.seed,
     )
     
@@ -341,7 +341,7 @@ def train_concatenated_model(args, concat_tokenizer_dir, train_corpus, test_corp
         logging_steps=100,
         save_steps=1000,
         eval_steps=1000,
-        evaluation_strategy="steps",
+        do_eval=True,  # Enable evaluation during training
         seed=args.seed,
     )
     

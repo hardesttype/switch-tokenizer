@@ -104,7 +104,7 @@ def main():
         logging_steps=100,
         save_steps=1000,
         eval_steps=1000,
-        evaluation_strategy="steps",
+        do_eval=True,  # Enable evaluation during training
         fp16=args.fp16,
         seed=args.seed,
     )
