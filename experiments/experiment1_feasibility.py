@@ -353,30 +353,94 @@ def evaluate_models(args, switchable_model, switchable_tokenizer, switchable_dat
                 tokenizer = monolingual_results[lang]["tokenizer"]
                 test_dataset = monolingual_results[lang]["test_dataset"]
                 
-                # Create DataLoader for the test dataset
+                print(f"Original dataset sample: {test_dataset[0] if len(test_dataset) > 0 else 'empty'}")
+                
+                # Create a properly formatted dataset for evaluation
+                from torch.utils.data import Dataset
+                
+                class FormattedDataset(Dataset):
+                    def __init__(self, original_dataset, tokenizer, max_length):
+                        self.tokenizer = tokenizer
+                        self.examples = []
+                        
+                        # Process each example to ensure proper format
+                        for i in range(len(original_dataset)):
+                            try:
+                                example = original_dataset[i]
+                                
+                                # If example already has input_ids, use them directly
+                                if 'input_ids' in example and isinstance(example['input_ids'], list):
+                                    # Ensure they're integers, not nested lists or strings
+                                    input_ids = [int(id) if isinstance(id, (int, float, str)) else id[0] if isinstance(id, list) else 0 
+                                                for id in example['input_ids']]
+                                    
+                                    # Create a proper example
+                                    self.examples.append({
+                                        'input_ids': input_ids[:max_length],
+                                        'attention_mask': [1] * min(len(input_ids), max_length)
+                                    })
+                                # If example has text, tokenize it
+                                elif 'text' in example:
+                                    encoded = tokenizer(
+                                        example['text'],
+                                        truncation=True,
+                                        max_length=max_length,
+                                        padding='max_length',
+                                        return_tensors=None  # Return Python lists
+                                    )
+                                    self.examples.append(encoded)
+                                # Skip examples that don't have the right format
+                                else:
+                                    print(f"Skipping example with keys: {example.keys()}")
+                            except Exception as e:
+                                print(f"Error processing example: {e}")
+                    
+                    def __len__(self):
+                        return len(self.examples)
+                    
+                    def __getitem__(self, idx):
+                        return self.examples[idx]
+                
+                # Create the formatted dataset
+                formatted_dataset = FormattedDataset(test_dataset, tokenizer, args.max_seq_length)
+                print(f"Created formatted dataset with {len(formatted_dataset)} examples")
+                
+                if len(formatted_dataset) == 0:
+                    print(f"Warning: No valid examples in the {lang_name} test dataset")
+                    results["monolingual"][lang] = float('inf')  # Use infinity for plotting
+                    continue
+                
+                # Print a sample
+                print(f"Formatted dataset sample: {formatted_dataset[0] if len(formatted_dataset) > 0 else 'empty'}")
+                
+                # Create DataLoader with the formatted dataset
                 data_collator = DataCollatorForLanguageModeling(
                     tokenizer=tokenizer,
                     mlm=False,
                 )
                 
-                # Use PyTorch's DataLoader with the collate function
                 test_loader = DataLoader(
-                    test_dataset, 
+                    formatted_dataset, 
                     batch_size=args.batch_size,
                     collate_fn=data_collator
                 )
                 
                 # Print debug information
-                print(f"Created test loader for {lang_name} with dataset size: {len(test_dataset)}")
+                print(f"Created test loader for {lang_name} with dataset size: {len(formatted_dataset)}")
                 
                 # Calculate perplexity
-                monolingual_ppl = calculate_perplexity(model, test_loader, args.device)
-                results["monolingual"][lang] = monolingual_ppl
-                print(f"{lang_name.capitalize()} monolingual model perplexity: {monolingual_ppl:.2f}")
+                if len(formatted_dataset) > 0:
+                    monolingual_ppl = calculate_perplexity(model, test_loader, args.device)
+                    results["monolingual"][lang] = monolingual_ppl
+                    print(f"{lang_name.capitalize()} monolingual model perplexity: {monolingual_ppl:.2f}")
+                else:
+                    print(f"Cannot calculate perplexity for {lang_name}, no valid examples")
+                    results["monolingual"][lang] = float('inf')  # Use infinity for plotting
             except Exception as e:
                 print(f"Error evaluating {lang_name} monolingual model: {e}")
                 import traceback
                 traceback.print_exc()
+                results["monolingual"][lang] = float('inf')  # Use infinity for plotting
     
     return results
 
