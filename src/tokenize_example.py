@@ -4,7 +4,6 @@ Example script to demonstrate tokenization with the SwitchableTokenizer.
 """
 
 import argparse
-from transformers import AutoTokenizer
 from .switch_tokenizer import SwitchableTokenizer
 
 def parse_args():
