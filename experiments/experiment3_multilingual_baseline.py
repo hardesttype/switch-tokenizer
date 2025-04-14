@@ -11,7 +11,7 @@ import argparse
 import torch
 import numpy as np
 from transformers import (
-    AutoTokenizer, AutoModelForCausalLM, Trainer, TrainingArguments,
+    AutoTokenizer, AutoModelForCausalLM, AutoConfig, Trainer, TrainingArguments,
     DataCollatorForLanguageModeling, set_seed
 )
 from datasets import load_dataset, Dataset
@@ -59,6 +59,8 @@ def parse_args():
     # Base model
     parser.add_argument("--base_model", type=str, default="gpt2-medium", 
                         help="Base model architecture")
+    parser.add_argument("--init_from_scratch", action="store_true",
+                        help="Initialize model from scratch instead of using pretrained weights")
     
     # Output directory
     parser.add_argument("--output_dir", type=str, default="./experiment3_output", 
@@ -121,6 +123,7 @@ def prepare_switchable_tokenizer(args, train_corpus):
         tokenizer = SwitchableTokenizer(
             en_tokenizer_path=args.en_tokenizer,
             ru_tokenizer_path=args.ru_tokenizer,
+            shared_vocab_size=None,  # Automatically determine the maximum safe shared vocab size
         )
     
     return tokenizer
@@ -260,10 +263,21 @@ def train_switchable_model(args, tokenizer, train_dataset, test_dataset):
     os.makedirs(switchable_output_dir, exist_ok=True)
     
     # Create model
-    model = create_model_with_switchable_tokenizer(
-        model_name_or_path=args.base_model,
-        tokenizer=tokenizer,
-    )
+    if args.init_from_scratch:
+        print("Initializing switchable model from scratch...")
+        model = create_model_with_switchable_tokenizer(
+            model_name_or_path=args.base_model,
+            tokenizer=tokenizer,
+            from_scratch=True,
+        )
+    else:
+        print(f"Initializing switchable model from pretrained {args.base_model}...")
+        model = create_model_with_switchable_tokenizer(
+            model_name_or_path=args.base_model,
+            tokenizer=tokenizer,
+            from_scratch=False,
+        )
+    
     model.to(args.device)
     
     # Set up data collator
@@ -315,7 +329,13 @@ def train_standard_model(args, tokenizer, train_dataset, test_dataset):
     os.makedirs(standard_output_dir, exist_ok=True)
     
     # Initialize model
-    model = AutoModelForCausalLM.from_pretrained(args.base_model)
+    if args.init_from_scratch:
+        print("Initializing standard model from scratch...")
+        config = AutoConfig.from_pretrained(args.base_model)
+        model = AutoModelForCausalLM.from_config(config)
+    else:
+        print(f"Initializing standard model from pretrained {args.base_model}...")
+        model = AutoModelForCausalLM.from_pretrained(args.base_model)
     
     # Resize token embeddings to match the multilingual tokenizer
     model.resize_token_embeddings(len(tokenizer))

@@ -265,6 +265,7 @@ def create_switchable_tokenizer_from_trained(
     tokenizer = SwitchableTokenizer(
         en_tokenizer_path=en_tokenizer_path,
         ru_tokenizer_path=ru_tokenizer_path,
+        shared_vocab_size=None,  # Automatically determine the maximum safe shared vocab size
     )
     
     # Save the tokenizer

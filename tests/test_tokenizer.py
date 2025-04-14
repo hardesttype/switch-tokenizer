@@ -1,5 +1,6 @@
 import unittest
 import torch
+import warnings
 from transformers import AutoTokenizer
 
 from src.switch_tokenizer import SwitchableTokenizer
@@ -10,24 +11,69 @@ class TestSwitchableTokenizer(unittest.TestCase):
         # Initialize tokenizers for testing
         # We use small, fast-loading tokenizers for tests
         cls.en_tokenizer_name = "gpt2"
-        cls.ru_tokenizer_name = "cointegrated/rubert-tiny"
+        cls.ru_tokenizer_name = "DeepPavlov/rubert-base-cased"
         
         cls.tokenizer = SwitchableTokenizer(
             en_tokenizer_path=cls.en_tokenizer_name,
             ru_tokenizer_path=cls.ru_tokenizer_name,
+            shared_vocab_size=64000,  # Explicitly set for backward compatibility with existing tests
         )
     
     def test_initialization(self):
         """Test that the tokenizer initializes correctly."""
         self.assertIsNotNone(self.tokenizer)
-        self.assertEqual(self.tokenizer.shared_vocab_size, 64000)
-        self.assertEqual(self.tokenizer.vocab_size, 64002)  # 64000 + 2 language tokens
+        # No longer test the exact shared_vocab_size as it's automatically adjusted
+        self.assertGreater(self.tokenizer.shared_vocab_size, 64000)
+        # Total vocab size should be shared vocab size + number of special tokens
+        self.assertEqual(self.tokenizer.vocab_size, 
+                        self.tokenizer.shared_vocab_size + len(self.tokenizer.special_tokens))
         
         # Check that language tokens were created
         self.assertIn("<LANG_EN>", self.tokenizer.special_tokens)
         self.assertIn("<LANG_RU>", self.tokenizer.special_tokens)
-        self.assertEqual(self.tokenizer.special_tokens["<LANG_EN>"], 64000)
-        self.assertEqual(self.tokenizer.special_tokens["<LANG_RU>"], 64001)
+        self.assertEqual(self.tokenizer.special_tokens["<LANG_EN>"], self.tokenizer.shared_vocab_size)
+        self.assertEqual(self.tokenizer.special_tokens["<LANG_RU>"], self.tokenizer.shared_vocab_size + 1)
+    
+    def test_auto_vocab_size(self):
+        """Test automatic determination of shared vocabulary size."""
+        # Create a tokenizer with automatic vocab size detection
+        auto_tokenizer = SwitchableTokenizer(
+            en_tokenizer_path=self.en_tokenizer_name,
+            ru_tokenizer_path=self.ru_tokenizer_name,
+            shared_vocab_size=None,  # Auto-detect
+        )
+        
+        # Check that shared_vocab_size is close to the maximum of both tokenizers
+        self.assertGreaterEqual(auto_tokenizer.shared_vocab_size, 50000)  # Reasonable for GPT2
+        
+        # Verify total vocab size includes special tokens
+        self.assertEqual(auto_tokenizer.vocab_size, 
+                         auto_tokenizer.shared_vocab_size + len(auto_tokenizer.special_tokens))
+    
+    def test_vocab_size_adjustment(self):
+        """Test auto-adjustment of small vocabulary size."""
+        # Find which tokenizer has the larger vocabulary
+        en_tokenizer = AutoTokenizer.from_pretrained(self.en_tokenizer_name)
+        ru_tokenizer = AutoTokenizer.from_pretrained(self.ru_tokenizer_name)
+        
+        en_size = len(en_tokenizer)
+        ru_size = len(ru_tokenizer)
+        max_size = max(en_size, ru_size)
+        
+        # Create a tokenizer with a small shared vocab size
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            small_vocab_tokenizer = SwitchableTokenizer(
+                en_tokenizer_path=self.en_tokenizer_name,
+                ru_tokenizer_path=self.ru_tokenizer_name,
+                shared_vocab_size=100,  # Artificially small
+            )
+            
+            # Check that warning was raised
+            self.assertTrue(any("Automatically increasing" in str(warning.message) for warning in w))
+        
+        # Check that shared_vocab_size was automatically increased
+        self.assertEqual(small_vocab_tokenizer.shared_vocab_size, max_size)
     
     def test_encode_english(self):
         """Test encoding English text."""
@@ -51,8 +97,6 @@ class TestSwitchableTokenizer(unittest.TestCase):
         
         # Rest of the tokens should be from the Russian tokenizer
         ru_ids = self.tokenizer.tokenizer_ru.encode(text, add_special_tokens=False)
-        # Filter out any IDs that might be beyond our shared vocab space
-        ru_ids = [id for id in ru_ids if id < self.tokenizer.shared_vocab_size]
         self.assertEqual(token_ids[1:], ru_ids)
     
     def test_decode(self):
@@ -62,18 +106,16 @@ class TestSwitchableTokenizer(unittest.TestCase):
         en_tokens = self.tokenizer.encode(en_text, language="EN")
         decoded_en = self.tokenizer.decode(en_tokens)
         
-        # The decoded text might not be exactly the same due to tokenizer specifics
-        # but should contain the original text
-        self.assertIn("Hello world", decoded_en)
+        # The decoded text should be exactly the same as the original text
+        self.assertEqual(decoded_en, en_text)
         
         # Russian
         ru_text = "Привет мир"
         ru_tokens = self.tokenizer.encode(ru_text, language="RU")
         decoded_ru = self.tokenizer.decode(ru_tokens)
         
-        # The decoded text might not be exactly the same due to tokenizer specifics
-        # but should contain the original text
-        self.assertIn("Привет", decoded_ru)
+        # The decoded text should be exactly the same as the original text
+        self.assertEqual(decoded_ru, ru_text)
     
     def test_language_switching(self):
         """Test handling language switching in token sequences."""
@@ -89,12 +131,9 @@ class TestSwitchableTokenizer(unittest.TestCase):
         
         decoded = self.tokenizer.decode(mixed_ids)
         
-        # The decoded text should contain both languages
-        self.assertIn("Hello", decoded)
-        self.assertIn("Привет", decoded)
-        
-        # Should appear twice due to the switch back
-        self.assertEqual(decoded.count("Hello"), 2)
+        # The decoded text should be exactly "HelloПриветHello"
+        expected = "HelloПриветHello"
+        self.assertEqual(decoded, expected)
     
     def test_convert_tokens_to_ids(self):
         """Test converting tokens to IDs."""
@@ -154,16 +193,62 @@ class TestSwitchableTokenizer(unittest.TestCase):
             loaded_tokenizer = SwitchableTokenizer.from_pretrained(tmpdirname)
             
             # Check that it loaded correctly
-            self.assertEqual(loaded_tokenizer.shared_vocab_size, self.tokenizer.shared_vocab_size)
-            self.assertEqual(loaded_tokenizer.vocab_size, self.tokenizer.vocab_size)
-            self.assertEqual(loaded_tokenizer.special_tokens, self.tokenizer.special_tokens)
+            self.assertEqual(loaded_tokenizer.shared_vocab_size, 
+                           self.tokenizer.shared_vocab_size)
+            self.assertEqual(loaded_tokenizer.vocab_size, 
+                           loaded_tokenizer.shared_vocab_size + len(loaded_tokenizer.special_tokens))
+            
+            # Check that special tokens exist and have their expected positions
+            self.assertEqual(set(loaded_tokenizer.special_tokens.keys()), 
+                           set(self.tokenizer.special_tokens.keys()))
+            self.assertEqual(loaded_tokenizer.special_tokens["<LANG_EN>"], 
+                           loaded_tokenizer.shared_vocab_size)
+            self.assertEqual(loaded_tokenizer.special_tokens["<LANG_RU>"], 
+                           loaded_tokenizer.shared_vocab_size + 1)
             
             # Test tokenization with loaded tokenizer
             text = "Hello world"
             original_ids = self.tokenizer.encode(text, language="EN")
             loaded_ids = loaded_tokenizer.encode(text, language="EN")
             
-            self.assertEqual(original_ids, loaded_ids)
+            # We can't directly compare IDs because the language token IDs may be different
+            # Instead, check that the first token is a language token and the rest match
+            self.assertEqual(original_ids[0], self.tokenizer.special_tokens["<LANG_EN>"])
+            self.assertEqual(loaded_ids[0], loaded_tokenizer.special_tokens["<LANG_EN>"])
+            self.assertEqual(original_ids[1:], loaded_ids[1:])
+
+    def test_cross_vocab_token_handling(self):
+        """Test handling of token IDs that are outside the vocabulary range of the current language."""
+        # Get vocabulary sizes of both tokenizers
+        en_vocab_size = len(self.tokenizer.tokenizer_en)
+        ru_vocab_size = len(self.tokenizer.tokenizer_ru)
+        
+        # Create a sequence mixing English-valid and Russian-only token IDs
+        # English tokens first (excluding language token for this test)
+        en_hello = self.tokenizer.encode("Hello", language="EN", add_language_token=False)
+        
+        # Manually create token IDs that would be valid only for Russian
+        # (assuming Russian vocab is larger than English)
+        if ru_vocab_size > en_vocab_size:
+            # Pick some IDs between English vocab size and Russian vocab size
+            ru_only_ids = [en_vocab_size + i for i in range(5)]
+            
+            # Combined sequence with both types of tokens
+            mixed_ids = en_hello + ru_only_ids
+            
+            # Decode with English context - Russian-only tokens should be filtered
+            decoded = self.tokenizer._decode_segment(mixed_ids, "EN", skip_special_tokens=True)
+            
+            # Should only include the English tokens
+            expected = self.tokenizer.tokenizer_en.decode(en_hello, skip_special_tokens=True)
+            self.assertEqual(decoded, expected)
+            
+            # Decode with Russian context - all tokens should be included
+            if all(tid < ru_vocab_size for tid in mixed_ids):
+                decoded_ru = self.tokenizer._decode_segment(mixed_ids, "RU", skip_special_tokens=True)
+                # Should be longer than the English-only decoded text
+                self.assertNotEqual(decoded, decoded_ru)
+                self.assertGreater(len(decoded_ru), len(decoded))
 
 if __name__ == "__main__":
     unittest.main() 

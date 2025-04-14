@@ -85,6 +85,7 @@ def train_switchable_model(args):
     tokenizer = SwitchableTokenizer(
         en_tokenizer_path=args.en_tokenizer,
         ru_tokenizer_path=args.ru_tokenizer,
+        shared_vocab_size=None,  # Automatically determine the maximum safe shared vocab size
     )
     
     # Prepare datasets
@@ -200,6 +201,7 @@ def train_monolingual_models(args):
                 examples["text"],
                 truncation=True,
                 max_length=args.max_seq_length,
+                padding="max_length",
                 return_special_tokens_mask=True,
             )
         
@@ -341,14 +343,22 @@ def evaluate_models(args, switchable_model, switchable_tokenizer, switchable_dat
                 mlm=False,
             )
             
-            test_loader = torch.utils.data.DataLoader(
-                test_dataset,
-                batch_size=args.batch_size,
-                collate_fn=data_collator,
-            )
+            # Custom batching to ensure proper collation
+            batches = []
+            for i in range(0, len(test_dataset), args.batch_size):
+                batch = test_dataset[i:i+args.batch_size]
+                batch_dict = {}
+                for key in batch.features.keys():
+                    batch_dict[key] = [batch[j][key] for j in range(len(batch))]
+                batches.append(data_collator(batch_dict))
+            
+            # Define a custom dataloader that yields these batches
+            def custom_loader():
+                for batch in batches:
+                    yield batch
             
             # Calculate perplexity using the imported function
-            monolingual_ppl = calculate_perplexity(model, test_loader, args.device)
+            monolingual_ppl = calculate_perplexity(model, custom_loader(), args.device)
             results["monolingual"][lang] = monolingual_ppl
             print(f"{lang_name.capitalize()} monolingual model perplexity: {monolingual_ppl:.2f}")
     

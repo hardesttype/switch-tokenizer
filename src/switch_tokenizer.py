@@ -15,7 +15,7 @@ class SwitchableTokenizer:
         self,
         en_tokenizer_path: str,
         ru_tokenizer_path: str,
-        shared_vocab_size: int = 64000,
+        shared_vocab_size: Optional[int] = None,
         special_tokens: Dict[str, int] = None,
     ):
         """
@@ -31,25 +31,45 @@ class SwitchableTokenizer:
         self.tokenizer_en = AutoTokenizer.from_pretrained(en_tokenizer_path)
         self.tokenizer_ru = AutoTokenizer.from_pretrained(ru_tokenizer_path)
         
-        # Set up the shared vocabulary size
-        self.shared_vocab_size = shared_vocab_size
+        # Determine actual vocab sizes
+        en_vocab_size = len(self.tokenizer_en)
+        ru_vocab_size = len(self.tokenizer_ru)
+        
+        # Determine the maximum shared vocab size if not explicitly specified
+        if shared_vocab_size is None:
+            self.shared_vocab_size = max(en_vocab_size, ru_vocab_size)
+            print(f"Using maximum tokenizer size: {self.shared_vocab_size} "
+                  f"(EN: {en_vocab_size}, RU: {ru_vocab_size})")
+        else:
+            # Check if provided shared_vocab_size is smaller than actual tokenizer sizes
+            max_tokenizer_size = max(en_vocab_size, ru_vocab_size)
+            if shared_vocab_size < max_tokenizer_size:
+                import warnings
+                warnings.warn(
+                    f"Specified shared_vocab_size ({shared_vocab_size}) is smaller than "
+                    f"the largest tokenizer vocab size (EN: {en_vocab_size}, RU: {ru_vocab_size}). "
+                    f"Automatically increasing to {max_tokenizer_size} to avoid discarding tokens."
+                )
+                self.shared_vocab_size = max_tokenizer_size
+            else:
+                self.shared_vocab_size = shared_vocab_size
         
         # Define special tokens outside the shared vocab space
         self.special_tokens = {
-            "<LANG_EN>": shared_vocab_size,
-            "<LANG_RU>": shared_vocab_size + 1,
+            "<LANG_EN>": self.shared_vocab_size,
+            "<LANG_RU>": self.shared_vocab_size + 1,
         }
         
         if special_tokens:
             # Add any additional special tokens
-            next_id = shared_vocab_size + 2
+            next_id = self.shared_vocab_size + 2
             for token_name, token_id in special_tokens.items():
                 if token_name not in self.special_tokens:
                     self.special_tokens[token_name] = next_id
                     next_id += 1
         
         # Store the total vocabulary size (shared vocab + special tokens)
-        self.vocab_size = shared_vocab_size + len(self.special_tokens)
+        self.vocab_size = self.shared_vocab_size + len(self.special_tokens)
         
         # Map language codes to tokenizers and language tokens
         self.lang_map = {
@@ -100,9 +120,7 @@ class SwitchableTokenizer:
         tokenizer = lang_info["tokenizer"]
         
         # Tokenize the text
-        # We force the IDs to be within the shared vocab space
         token_ids = tokenizer.encode(text, add_special_tokens=False, **kwargs)
-        token_ids = [tid for tid in token_ids if tid < self.shared_vocab_size]
         
         # Add language token if requested
         if add_language_token:
@@ -187,9 +205,10 @@ class SwitchableTokenizer:
             return ""
         
         tokenizer = self.lang_map[language]["tokenizer"]
+        tokenizer_vocab_size = len(tokenizer)
         
-        # Filter out any token IDs outside the shared vocab range
-        valid_ids = [tid for tid in token_ids if tid < self.shared_vocab_size]
+        # Filter out token IDs that are invalid for this tokenizer
+        valid_ids = [tid for tid in token_ids if tid < tokenizer_vocab_size]
         
         # Handle empty sequence after filtering
         if not valid_ids:
@@ -233,7 +252,8 @@ class SwitchableTokenizer:
                 if current_tokens and current_lang:
                     tokenizer = self.lang_map[current_lang]["tokenizer"]
                     ids = tokenizer.convert_tokens_to_ids(current_tokens)
-                    result.extend([id for id in ids if id < self.shared_vocab_size])
+                    # We don't need to filter here - all token IDs from this tokenizer are valid
+                    result.extend(ids)
                     current_tokens = []
                 
                 # Add the special token ID
@@ -256,7 +276,8 @@ class SwitchableTokenizer:
         if current_tokens and current_lang:
             tokenizer = self.lang_map[current_lang]["tokenizer"]
             ids = tokenizer.convert_tokens_to_ids(current_tokens)
-            result.extend([id for id in ids if id < self.shared_vocab_size])
+            # We don't need to filter here - all token IDs from this tokenizer are valid
+            result.extend(ids)
         
         return result
     
@@ -294,10 +315,17 @@ class SwitchableTokenizer:
                     break
             
             # If not a special token and within shared vocab range
-            if token_id is not None and token_id < self.shared_vocab_size:
+            if token_id is not None:
                 tokenizer = self.lang_map[current_lang]["tokenizer"]
-                token = tokenizer.convert_ids_to_tokens([token_id])[0]
-                result.append(token)
+                tokenizer_vocab_size = len(tokenizer)
+                
+                # Only try to convert if the token ID is within the tokenizer's vocabulary
+                if token_id < tokenizer_vocab_size:
+                    token = tokenizer.convert_ids_to_tokens([token_id])[0]
+                    result.append(token)
+                else:
+                    # Use a pad token for IDs outside the tokenizer's vocabulary
+                    result.append("[PAD]")
         
         return result
     
@@ -375,9 +403,34 @@ class SwitchableTokenizer:
         en_tokenizer_path = os.path.join(directory, "en_tokenizer")
         ru_tokenizer_path = os.path.join(directory, "ru_tokenizer")
         
-        return cls(
+        # Get configuration values
+        shared_vocab_size = config.get("shared_vocab_size")
+        special_tokens = config.get("special_tokens")
+        
+        # Create tokenizer instance
+        tokenizer = cls(
             en_tokenizer_path=en_tokenizer_path,
             ru_tokenizer_path=ru_tokenizer_path,
-            shared_vocab_size=config.get("shared_vocab_size", 64000),
-            special_tokens=config.get("special_tokens", None),
-        ) 
+            shared_vocab_size=shared_vocab_size,
+            special_tokens=special_tokens,
+        )
+        
+        # Ensure exact same configuration
+        if shared_vocab_size is not None:
+            # Set exact same shared vocabulary size
+            tokenizer.shared_vocab_size = shared_vocab_size
+            
+            # Set exact same special token IDs
+            if special_tokens is not None:
+                tokenizer.special_tokens = special_tokens
+                
+                # Update language map token IDs to match loaded special tokens
+                for lang, info in tokenizer.lang_map.items():
+                    lang_token = f"<LANG_{lang}>"
+                    if lang_token in special_tokens:
+                        tokenizer.lang_map[lang]["lang_token_id"] = special_tokens[lang_token]
+            
+            # Recalculate vocab_size based on the fixed values
+            tokenizer.vocab_size = tokenizer.shared_vocab_size + len(tokenizer.special_tokens)
+            
+        return tokenizer 

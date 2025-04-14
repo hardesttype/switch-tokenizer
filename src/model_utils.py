@@ -10,6 +10,7 @@ def create_model_with_switchable_tokenizer(
     tokenizer: SwitchableTokenizer,
     model_config: Optional[Dict[str, Any]] = None,
     device_map: Optional[Union[str, Dict[str, Union[int, str]]]] = None,
+    from_scratch: bool = False,
 ) -> PreTrainedModel:
     """
     Create a language model configured to work with the switchable tokenizer.
@@ -19,15 +20,23 @@ def create_model_with_switchable_tokenizer(
         tokenizer: SwitchableTokenizer instance
         model_config: Optional configuration overrides for the model
         device_map: Optional device map for loading the model
+        from_scratch: Whether to initialize the model from scratch instead of using pretrained weights
         
     Returns:
         PreTrainedModel instance configured with the tokenizer's vocabulary size
     """
-    # Load the model with its original config first
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name_or_path,
-        device_map=device_map,
-    )
+    if from_scratch:
+        # Load config from the model architecture
+        config = AutoConfig.from_pretrained(model_name_or_path)
+        
+        # Initialize model from scratch with the config
+        model = AutoModelForCausalLM.from_config(config)
+    else:
+        # Load the model with its original config and pretrained weights
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name_or_path,
+            device_map=device_map,
+        )
     
     # Now resize the token embeddings to match the switchable tokenizer vocab size
     model.resize_token_embeddings(tokenizer.vocab_size)
