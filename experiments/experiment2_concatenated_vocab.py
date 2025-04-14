@@ -317,7 +317,7 @@ def train_concatenated_model(args, concat_tokenizer_dir, train_corpus, test_corp
     )
     
     # Initialize model
-    if args.from_scratch:
+    if getattr(args, 'from_scratch', False):
         config = AutoConfig.from_pretrained(args.base_model)
         config.vocab_size = len(tokenizer)
         model = AutoModelForCausalLM.from_config(config)
@@ -579,7 +579,7 @@ def main():
         f.write("=== Experiment 2: Comparison vs. Concatenated Vocab ===\n\n")
         
         # Write training approach
-        training_type = "from scratch" if args.from_scratch else "fine-tuned"
+        training_type = "from scratch" if getattr(args, 'from_scratch', False) else "fine-tuned"
         f.write(f"Models were trained {training_type}\n\n")
         
         # Write switchable model results

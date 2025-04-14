@@ -57,7 +57,7 @@ def parse_args():
     # Base model
     parser.add_argument("--base_model", type=str, default="gpt2-medium", 
                         help="Base model architecture")
-    parser.add_argument("--init_from_scratch", action="store_true",
+    parser.add_argument("--from_scratch", action="store_true",
                         help="Initialize model from scratch instead of using pretrained weights")
     
     # Output directory
@@ -261,7 +261,7 @@ def train_switchable_model(args, tokenizer, train_dataset, test_dataset):
     os.makedirs(switchable_output_dir, exist_ok=True)
     
     # Create model
-    if args.init_from_scratch:
+    if getattr(args, 'from_scratch', False):
         print("Initializing switchable model from scratch...")
         model = create_model_with_switchable_tokenizer(
             model_name_or_path=args.base_model,
@@ -327,7 +327,7 @@ def train_standard_model(args, tokenizer, train_dataset, test_dataset):
     os.makedirs(standard_output_dir, exist_ok=True)
     
     # Initialize model
-    if args.init_from_scratch:
+    if getattr(args, 'from_scratch', False):
         print("Initializing standard model from scratch...")
         config = AutoConfig.from_pretrained(args.base_model)
         model = AutoModelForCausalLM.from_config(config)

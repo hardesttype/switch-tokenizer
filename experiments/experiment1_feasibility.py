@@ -220,7 +220,7 @@ def train_monolingual_models(args):
         )
         
         # Initialize model
-        if args.from_scratch:
+        if getattr(args, 'from_scratch', False):
             config = AutoConfig.from_pretrained(args.base_model)
             config.vocab_size = len(tokenizer)
             model = AutoModelForCausalLM.from_config(config)
@@ -452,7 +452,7 @@ def main():
         f.write("=== Experiment 1: Feasibility and Performance ===\n\n")
         
         # Write training approach
-        training_type = "from scratch" if args.from_scratch else "fine-tuned"
+        training_type = "from scratch" if getattr(args, 'from_scratch', False) else "fine-tuned"
         f.write(f"Models were trained {training_type} on {args.data_limit} examples per language for {args.epochs} epochs.\n")
         f.write(f"Base model: {args.base_model}\n")
         f.write(f"English tokenizer: {args.en_tokenizer}\n")
