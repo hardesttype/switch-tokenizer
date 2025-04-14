@@ -6,7 +6,6 @@ This allows the package to be run as a module: python -m src
 
 import argparse
 import sys
-from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from .switch_tokenizer import SwitchableTokenizer
 from .model_utils import create_model_with_switchable_tokenizer, generate_text

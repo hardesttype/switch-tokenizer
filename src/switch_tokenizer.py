@@ -1,6 +1,6 @@
-from typing import Dict, List, Optional, Union, Tuple
+from typing import Dict, List, Optional, Tuple
 import os
-from transformers import PreTrainedTokenizer, AutoTokenizer
+from transformers import AutoTokenizer
 
 class SwitchableTokenizer:
     """

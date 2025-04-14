@@ -1,5 +1,4 @@
 import unittest
-import torch
 import warnings
 from transformers import AutoTokenizer
 

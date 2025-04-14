@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Union, Any, Callable, Tuple
+from typing import Dict, List, Optional, Union, Any, Tuple
 import torch
 from torch.utils.data import Dataset, DataLoader
 from datasets import load_dataset, Dataset as HFDataset

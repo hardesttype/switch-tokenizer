@@ -1,8 +1,6 @@
 import os
 import argparse
-import torch
 from transformers import Trainer, TrainingArguments, set_seed
-from transformers import AutoTokenizer, GPT2LMHeadModel
 
 from .switch_tokenizer import SwitchableTokenizer
 from .model_utils import create_model_with_switchable_tokenizer
