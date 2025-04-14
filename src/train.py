@@ -73,6 +73,7 @@ def main():
     model = create_model_with_switchable_tokenizer(
         model_name_or_path=args.model_name_or_path,
         tokenizer=tokenizer,
+        from_scratch=False,  # Default to using pretrained weights
     )
     
     # Create data collator

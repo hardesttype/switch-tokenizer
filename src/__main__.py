@@ -67,6 +67,7 @@ def main():
         model = create_model_with_switchable_tokenizer(
             model_name_or_path=args.model_dir,
             tokenizer=tokenizer,
+            from_scratch=False,  # Default to using pretrained weights
         )
         
         # Generate text

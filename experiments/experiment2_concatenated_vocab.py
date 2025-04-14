@@ -217,7 +217,7 @@ def train_switchable_model(args, switchable_tokenizer_dir, train_corpus, test_co
     model = create_model_with_switchable_tokenizer(
         model_name_or_path=args.base_model,
         tokenizer=tokenizer,
-        from_scratch=args.from_scratch,
+        from_scratch=getattr(args, 'from_scratch', False),
     )
     model.to(args.device)
     
