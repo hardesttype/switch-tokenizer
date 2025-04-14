@@ -14,7 +14,7 @@ import numpy as np
 import json
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from transformers import set_seed, AutoTokenizer
+from transformers import set_seed
 import pandas as pd
 import seaborn as sns
 
@@ -50,9 +50,6 @@ def find_shared_token_ids(tokenizer, num_tokens=100):
     """Find token IDs that have different meanings in different languages."""
     print("\n=== Finding Shared Token IDs ===")
     
-    en_tokenizer = tokenizer.tokenizer_en
-    ru_tokenizer = tokenizer.tokenizer_ru
-    
     # Track token IDs and their meanings in each language
     shared_tokens = []
     
@@ -62,8 +59,8 @@ def find_shared_token_ids(tokenizer, num_tokens=100):
     
     # Find token IDs that have non-empty meanings in both languages
     for token_id in range(start_id, max_id):
-        en_token = en_tokenizer.convert_ids_to_tokens([token_id])[0]
-        ru_token = ru_tokenizer.convert_ids_to_tokens([token_id])[0]
+        en_token = tokenizer.convert_ids_to_tokens([token_id], language="EN")[0]
+        ru_token = tokenizer.convert_ids_to_tokens([token_id], language="RU")[0]
         
         # Check if the tokens are real words or subwords (not special tokens or padding)
         en_is_valid = not (en_token.startswith("<") or en_token.startswith("[") or 
@@ -91,8 +88,8 @@ def find_shared_token_ids(tokenizer, num_tokens=100):
         # If we can't find many real shared tokens, relax constraints and find some tokens anyway
         print("Not enough shared tokens found. Relaxing constraints to find more tokens...")
         for token_id in range(start_id, max_id):
-            en_token = en_tokenizer.convert_ids_to_tokens([token_id])[0]
-            ru_token = ru_tokenizer.convert_ids_to_tokens([token_id])[0]
+            en_token = tokenizer.convert_ids_to_tokens([token_id], language="EN")[0]
+            ru_token = tokenizer.convert_ids_to_tokens([token_id], language="RU")[0]
             
             if en_token != ru_token and len(shared_tokens) < num_tokens:
                 shared_tokens.append({

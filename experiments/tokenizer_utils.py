@@ -4,11 +4,9 @@ Utilities for training tokenizers for the experiments.
 """
 
 import os
-from pathlib import Path
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional
 import tempfile
-import shutil
-from datasets import load_dataset, Dataset
+from datasets import load_dataset
 from tokenizers import Tokenizer, decoders, models, normalizers, pre_tokenizers, processors, trainers
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
 

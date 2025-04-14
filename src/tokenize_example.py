@@ -63,9 +63,9 @@ def main():
     # Tokenize parts separately and combine
     parts = [
         (tokenizer.encode("Hello! ", language="EN"), "EN"),
-        (tokenizer.encode("Привет! ", language="RU", add_language_token=False), "RU"),
-        (tokenizer.encode("This is a mix of English and ", language="EN", add_language_token=False), "EN"),
-        (tokenizer.encode("русский язык.", language="RU", add_language_token=False), "RU"),
+        (tokenizer.encode("Привет! ", language="RU"), "RU"),
+        (tokenizer.encode("This is a mix of English and ", language="EN"), "EN"),
+        (tokenizer.encode("русский язык.", language="RU"), "RU"),
     ]
     
     # Combine the parts, preserving language tokens
@@ -82,8 +82,8 @@ def main():
     
     # Take a sample ID in the shared space (let's say ID 1000)
     sample_id = 1000
-    en_token = tokenizer.tokenizer_en.convert_ids_to_tokens([sample_id])[0]
-    ru_token = tokenizer.tokenizer_ru.convert_ids_to_tokens([sample_id])[0]
+    en_token = tokenizer.convert_ids_to_tokens([sample_id], language="EN")[0]
+    ru_token = tokenizer.convert_ids_to_tokens([sample_id], language="RU")[0]
     
     print(f"ID {sample_id} represents:")
     print(f"  - In English tokenizer: '{en_token}'")
@@ -91,8 +91,8 @@ def main():
     
     # Find another ID with interesting tokens in both languages
     for test_id in range(100, 1000, 100):
-        en_token = tokenizer.tokenizer_en.convert_ids_to_tokens([test_id])[0]
-        ru_token = tokenizer.tokenizer_ru.convert_ids_to_tokens([test_id])[0]
+        en_token = tokenizer.convert_ids_to_tokens([test_id], language="EN")[0]
+        ru_token = tokenizer.convert_ids_to_tokens([test_id], language="RU")[0]
         print(f"ID {test_id} represents:")
         print(f"  - In English tokenizer: '{en_token}'")
         print(f"  - In Russian tokenizer: '{ru_token}'")

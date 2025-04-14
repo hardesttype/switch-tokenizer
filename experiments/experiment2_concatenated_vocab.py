@@ -14,13 +14,12 @@ from transformers import (
     AutoTokenizer, AutoModelForCausalLM, Trainer, TrainingArguments,
     DataCollatorForLanguageModeling, set_seed
 )
-from datasets import load_dataset, Dataset
+from datasets import Dataset
 import matplotlib.pyplot as plt
 
 from src.switch_tokenizer import SwitchableTokenizer
 from src.model_utils import create_model_with_switchable_tokenizer
 from src.data_utils import (
-    prepare_multilingual_datasets,
     SwitchableDataCollator,
     create_data_loaders
 )
@@ -187,7 +186,6 @@ def train_switchable_model(args, switchable_tokenizer_dir, train_corpus, test_co
             encoding = tokenizer.encode(
                 text, 
                 language=lang,
-                add_language_token=True,
                 max_length=args.max_seq_length,
                 truncation=True,
             )

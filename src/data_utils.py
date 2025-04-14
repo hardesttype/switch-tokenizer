@@ -74,7 +74,6 @@ class MultilingualDataset(Dataset):
         encoding = self.tokenizer.encode(
             text,
             language=language,
-            add_language_token=True,
             truncation=True,
             max_length=self.max_length,
         )
@@ -116,7 +115,7 @@ class SwitchableDataCollator(DataCollatorForLanguageModeling):
             pad_to_multiple_of: Optional padding multiple
         """
         super().__init__(
-            tokenizer=tokenizer.tokenizer_en,  # Use one of the underlying tokenizers for basic functionality
+            tokenizer=tokenizer,  # Use the switchable tokenizer directly
             mlm=mlm,
             mlm_probability=mlm_probability,
             pad_to_multiple_of=pad_to_multiple_of,

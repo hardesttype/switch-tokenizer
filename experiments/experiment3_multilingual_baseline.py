@@ -14,21 +14,19 @@ from transformers import (
     AutoTokenizer, AutoModelForCausalLM, AutoConfig, Trainer, TrainingArguments,
     DataCollatorForLanguageModeling, set_seed
 )
-from datasets import load_dataset, Dataset
+from datasets import Dataset
 import matplotlib.pyplot as plt
 
 from src.switch_tokenizer import SwitchableTokenizer
 from src.model_utils import create_model_with_switchable_tokenizer
 from src.data_utils import (
-    prepare_multilingual_datasets,
     SwitchableDataCollator,
     create_data_loaders
 )
 from src.evaluation import calculate_perplexity
 from experiments.tokenizer_utils import (
     load_multilingual_corpus,
-    train_concatenated_tokenizer,
-    analyze_tokenizer_overlap
+    train_concatenated_tokenizer
 )
 
 def parse_args():

@@ -36,10 +36,10 @@ tokens = []
 tokens.extend(tokenizer.encode("Hello! How are you? ", language="EN"))
 
 # Switch to Russian
-tokens.extend(tokenizer.encode("Я говорю по-русски. ", language="RU", add_language_token=True))
+tokens.extend(tokenizer.encode("Я говорю по-русски. ", language="RU"))
 
 # Switch back to English
-tokens.extend(tokenizer.encode("I can switch between languages.", language="EN", add_language_token=True))
+tokens.extend(tokenizer.encode("I can switch between languages.", language="EN"))
 
 # Decode the mixed sequence
 mixed_text = tokenizer.decode(tokens)
@@ -62,7 +62,7 @@ tokenizer = SwitchableTokenizer(
 
 # Prepare datasets
 dataset_configs = {
-    "EN": {"path": "wikimedia/wikipedia", "name": "20231101.en"},
+    "EN": {"path": "wikimedia/wikipedia", "name": "20231101.en", "split": "train[:1000]"},
     "RU": {"path": "wikimedia/wikipedia", "name": "20231101.ru", "split": "train[:1000]"},  # Limit size for example
 }
 
@@ -184,18 +184,18 @@ with torch.no_grad():
     
     print("Top English context tokens:")
     for i, (token_id, prob) in enumerate(zip(en_top10.indices, en_top10.values)):
-        token = tokenizer.convert_ids_to_tokens([token_id])[0]
+        token = tokenizer.convert_ids_to_tokens([token_id.item()], language="EN")[0]
         print(f"{i+1}. '{token}' (ID: {token_id}, prob: {prob:.4f})")
     
     print("\nTop Russian context tokens:")
     for i, (token_id, prob) in enumerate(zip(ru_top10.indices, ru_top10.values)):
-        token = tokenizer.convert_ids_to_tokens([token_id])[0]
+        token = tokenizer.convert_ids_to_tokens([token_id.item()], language="RU")[0]
         print(f"{i+1}. '{token}' (ID: {token_id}, prob: {prob:.4f})")
     
     # Pick an ID that might have different meanings in different contexts
     test_id = 1000
-    en_token = tokenizer.tokenizer_en.convert_ids_to_tokens([test_id])[0]
-    ru_token = tokenizer.tokenizer_ru.convert_ids_to_tokens([test_id])[0]
+    en_token = tokenizer.convert_ids_to_tokens([test_id], language="EN")[0]
+    ru_token = tokenizer.convert_ids_to_tokens([test_id], language="RU")[0]
     
     print(f"\nAnalyzing token ID {test_id}:")
     print(f"English meaning: '{en_token}'")
