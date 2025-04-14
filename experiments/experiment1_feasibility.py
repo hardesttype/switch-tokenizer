@@ -179,6 +179,10 @@ def train_monolingual_models(args):
             tokenizer = AutoTokenizer.from_pretrained(args.en_tokenizer)
         else:  # RU
             tokenizer = AutoTokenizer.from_pretrained(args.ru_tokenizer)
+            
+        # Set padding token if it doesn't exist
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
         
         # Load dataset
         if lang == "EN":
