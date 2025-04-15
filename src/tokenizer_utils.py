@@ -253,7 +253,7 @@ def create_switchable_tokenizer_from_trained(
     Returns:
         Path to the switchable tokenizer
     """
-    from src.switch_tokenizer import SwitchableTokenizer
+    from .switch_tokenizer import SwitchableTokenizer
     
     # Create output directory
     switchable_dir = os.path.join(output_dir, "switchable_tokenizer")

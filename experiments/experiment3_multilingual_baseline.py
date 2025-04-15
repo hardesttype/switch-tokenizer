@@ -24,7 +24,7 @@ from src.data_utils import (
     create_data_loaders
 )
 from src.evaluation import calculate_perplexity
-from experiments.tokenizer_utils import (
+from src.tokenizer_utils import (
     load_multilingual_corpus,
     train_concatenated_tokenizer
 )

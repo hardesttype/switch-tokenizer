@@ -315,4 +315,51 @@ def create_data_loaders(
             pin_memory=True,
         )
     
-    return loaders 
+    return loaders
+
+class FormattedDataset(Dataset):
+    """
+    A dataset for converting already tokenized or raw text datasets to a format
+    compatible with the DataLoader and language models.
+    """
+    def __init__(self, original_dataset, tokenizer, max_length):
+        self.tokenizer = tokenizer
+        self.examples = []
+        
+        # Process each example to ensure proper format
+        for i in range(len(original_dataset)):
+            try:
+                example = original_dataset[i]
+                
+                # If example already has input_ids, use them directly
+                if 'input_ids' in example and isinstance(example['input_ids'], list):
+                    # Ensure they're integers, not nested lists or strings
+                    input_ids = [int(id) if isinstance(id, (int, float, str)) else id[0] if isinstance(id, list) else 0 
+                                for id in example['input_ids']]
+                    
+                    # Create a proper example
+                    self.examples.append({
+                        'input_ids': input_ids[:max_length],
+                        'attention_mask': [1] * min(len(input_ids), max_length)
+                    })
+                # If example has text, tokenize it
+                elif 'text' in example:
+                    encoded = tokenizer(
+                        example['text'],
+                        truncation=True,
+                        max_length=max_length,
+                        padding='max_length',
+                        return_tensors=None  # Return Python lists
+                    )
+                    self.examples.append(encoded)
+                # Skip examples that don't have the right format
+                else:
+                    print(f"Skipping example with keys: {example.keys()}")
+            except Exception as e:
+                print(f"Error processing example: {e}")
+    
+    def __len__(self):
+        return len(self.examples)
+    
+    def __getitem__(self, idx):
+        return self.examples[idx] 
