@@ -1,0 +1,214 @@
+\documentclass{beamer}
+\usepackage{graphicx} % Required for including images
+\usepackage{hyperref} % Required for hyperlinks
+
+% Theme choice (optional, choose one you like or use default)
+% \usetheme{Madrid}
+% \usetheme{Boadilla}
+% \usetheme{CambridgeUS}
+\usetheme{default} % Simple default theme
+
+% Title Page Information
+\title{Switch-Tokenizer: Pretraining Language Models to Use Multiple Tokenizers} % Updated title
+\author{Nikita Razuvaev} % Replace with your name
+\institute{Data Scientist, MTS Fintech \\ \vspace{0.3cm} \href{https://github.com/hardesttype/switch-tokenizer}{GitHub: hardesttype/switch-tokenizer}} % Added GitHub link with spacing
+\date{\today} % Current date
+
+% You can add a logo if you have one
+\titlegraphic{\includegraphics[width=2cm]{summer-school-logo.png}} % Logo added
+
+\begin{document}
+
+% --- Title Frame ---
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% --- Introduction Frame ---
+\begin{frame}
+  \frametitle{Introduction}
+  \begin{itemize}
+    \item \textbf{What is Switch-Tokenizer?} \\
+          A multilingual tokenizer implementation that uses a shared vocabulary space between different language-specific tokenizers.
+    \item \textbf{Why is it important?} \\
+          Enables efficient parameter usage in multilingual language models through context-dependent token interpretation.
+    \item \textbf{Background} \\
+          Traditional multilingual models use a common vocabulary trained on multilingual data, which can be very unbalanced, resulting in inefficient parameter usage and increased model size.
+    \item \textbf{Goal of the research} \\
+          Develop an efficient multilingual tokenization approach that maintains performance while reducing parameter costs.
+  \end{itemize}
+\end{frame}
+
+% --- Problem Statement Frame ---
+\begin{frame}
+  \frametitle{Problem Statement}
+  \begin{itemize}
+    \item \textbf{What exactly are we solving?} \\
+          Inefficient parameter usage in multilingual language models due to common vocabularies trained on unbalanced multilingual data.
+    \item \textbf{Challenges} \\
+          - Maintaining a fixed-size embedding table despite multiple languages\\
+          - Learning context-dependent token interpretation\\
+          - Ensuring tokenization efficiency without using a single shared vocabulary
+    \item \textbf{Scope} \\
+          Focusing on efficient multilingual language modeling while maintaining performance across languages.
+  \end{itemize}
+\end{frame}
+
+% --- Related Work: Tokenizer Adaptation Methods ---
+\begin{frame}
+  \frametitle{Related Work: Tokenizer Adaptation Methods}
+  \begin{center}
+    \small
+    \begin{tabular}{|p{2.5cm}|p{3cm}|p{4cm}|}
+      \hline
+      \textbf{Method} & \textbf{Approach} & \textbf{Key Advantages} \\
+      \hline
+      Zero-Shot Tokenizer Transfer & Transfers pretrained model to new tokenizer without finetuning & Enables switching tokenizers post-training with minimal performance loss \\
+      \hline
+      LazyLLM & Dynamic token pruning during inference & Reduces computation for long contexts by 2-4x while preserving quality \\
+      \hline
+      ReTok & Replaces original tokenizer with more efficient one & Improves context length by up to 2x with minimal perplexity degradation \\
+      \hline
+      MRT5 & Dynamic token merging for byte-level models & Processes longer contexts efficiently while maintaining byte-level precision \\
+      \hline
+      Dynamic Tokenization & Retrofits LLMs with specialized tokenizers & Enables specialized encoding for different domains/languages without retraining \\
+      \hline
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+% --- Methods Frame ---
+\begin{frame}
+  \frametitle{Methods: The Switch-Tokenizer Approach}
+  \begin{columns}[T] % Top-aligned columns
+    \begin{column}{0.48\textwidth}
+      \begin{itemize}\small
+        \item \textbf{Approach:}
+          \begin{itemize}
+            \item Each language has its own tokenizer with its own vocabulary
+            \item All tokenizers map into the \textbf{same shared vocabulary ID space}
+          \end{itemize}
+        \item \textbf{Why this method?}\\
+              Maintains a fixed-size embedding table and output projection layer regardless of the number of languages.
+        \item \textbf{How it works:} \\
+              The model learns to associate token IDs with different tokens depending on the language context.
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \includegraphics[width=\textwidth]{eperiment1_schema.png}
+      \begin{center}
+        \small Switch-Tokenizer methodology
+      \end{center}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% --- Results Frame ---
+\begin{frame}
+  \frametitle{Results: Experiment 1}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{itemize}\small
+        \item \textbf{Key findings:} 
+          \begin{itemize}
+            \item With equal (monolingual) training budget for all models, monolingual models perform better on their respective languages
+            \item But for multilingual tasks, the switchable model outperforms by 22.07\%
+            \item Tokenization efficiency remained consistent across approaches
+          \end{itemize}
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \includegraphics[width=\textwidth]{perplexity_comparison.png}
+      \vspace{-0.3cm}
+      \begin{center}
+        \tiny Perplexity comparison (lower is better)
+      \end{center}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% --- Additional Results Frame ---
+\begin{frame}
+  \frametitle{Tokenization Efficiency}
+  \begin{columns}[T]
+    \begin{column}{0.48\textwidth}
+      \begin{itemize}\small
+        \item \textbf{Metrics used:} 
+          \begin{itemize}
+            \item Tokens per word ratio (lower is better)
+            \item Perplexity scores across languages
+          \end{itemize}
+        \item \textbf{Experimental setup:} 
+          \begin{itemize}
+            \item Data: Wikipedia articles (EN + RU)
+            \item Base model: gpt2-medium
+            \item Tokenizers: gpt2 (EN), ruGPT-3.5-13B (RU)
+          \end{itemize}
+        \item \textbf{Idea:} 
+          \begin{itemize}
+            \item Increase token budget to multilingual
+          \end{itemize}  
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \includegraphics[width=\textwidth]{detailed_tokenization_efficiency.png}
+      \vspace{-0.3cm}
+      \begin{center}
+        \tiny Tokens per word comparison
+      \end{center}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+% --- Future Work Frame ---
+\begin{frame}
+  \frametitle{Future Work}
+  \begin{itemize}
+    \item \textbf{Planned experiments:} \\
+          - Comparison vs. Common Vocabulary Approach\\
+          - Multilingual Baseline Comparison\\
+          - Context Sensitivity Analysis
+    \item \textbf{Unresolved challenges:} \\
+          - Dynamic tokenizer switching without explicit language tokens\\
+          - Scaling to larger models and more languages
+    \item \textbf{Why it matters:} \\
+          Efficient multilingual models have applications in translation, cross-lingual understanding, and content creation.
+    \item \textbf{Future opportunities:} \\
+          - Specialized tokenizers for programming languages\\
+          - Expanded benchmarks on standard multilingual tasks
+  \end{itemize}
+\end{frame}
+
+% --- Bibliography Frame ---
+\begin{frame}[allowframebreaks] % allowframebreaks allows the bibliography to span multiple slides if needed
+  \frametitle{Bibliography}
+  % Reduce font size for bibliography if needed
+  \tiny 
+  \begin{thebibliography}{99} % The {99} allows for up to 99 entries. Adjust if needed.
+    \bibitem{ZeroShotTokenizer} "Zero-Shot Tokenizer Transfer" (Minixhofer et al., 2024)
+    \bibitem{LazyLLM} "LazyLLM: Dynamic Token Pruning for Efficient Long Context LLM Inference" (Fu et al., 2024)
+    \bibitem{ReTok} "ReTok: Replacing Tokenizer to Enhance Representation Efficiency in Large Language Model" (Gu et al., 2024)
+    \bibitem{MRT5} "MrT5: Dynamic Token Merging for Efficient Byte-level Language Models" (Kallini et al., 2024)
+    \bibitem{DynamicTokenization} "Retrofitting Large Language Models with Dynamic Tokenization" (Feher et al., 2024)
+    \bibitem{GPT2} "Language Models are Unsupervised Multitask Learners" (Radford et al., 2019)
+    \bibitem{RussianLMs} "A Family of Pretrained Transformer Language Models for Russian" (Zmitrovich et al., 2023)
+    \bibitem{wikidump} "Wikimedia Downloads" (Wikimedia Foundation)
+    \bibitem{LangSpecificTokenizer} "How does a Language-Specific Tokenizer affect LLMs?" (Seo et al., 2024)
+    \bibitem{Qtok} "Qtok: A Comprehensive Framework for Evaluating Multilingual Tokenizer Quality in Large Language Models" (Chelombitko et al., 2023)
+    \bibitem{TokenizerPreTraining} "Getting the most out of your tokenizer for pre-training and domain adaptation" (Dagan et al., 2023)
+    \bibitem{TokenizerChoice} "Tokenizer Choice For LLM Training: Negligible or Crucial?" (Ali et al., 2024)
+  \end{thebibliography}
+\end{frame}
+
+% --- Appendix Frame ---
+\begin{frame}
+  \frametitle{Appendix: Training Curves}
+  \begin{center}
+    \includegraphics[width=0.9\textwidth]{training_losses.png}
+    \vspace{0.2cm}
+    
+    \small{Training loss comparison between switchable and monolingual models}
+  \end{center}
+\end{frame}
+
+\end{document}

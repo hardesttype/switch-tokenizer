@@ -1,0 +1,38 @@
+=== Experiment 1: Feasibility and Performance ===
+
+Models were trained from scratch on the first shard of each language dataset for 1 epochs.
+Base model: gpt2-medium
+English tokenizer: gpt2
+Russian tokenizer: ai-forever/ruGPT-3.5-13B
+
+Switchable Model Perplexity:
+  EN: 431.15
+  RU: 1427.53
+  combined: 812.48
+
+Monolingual Models Perplexity:
+  EN: 203.75
+  RU: 717.35
+
+Monolingual Models on Combined Data Perplexity:
+  EN: 1042.55
+  RU: 3322.02
+  Best: 1042.55
+
+Tokenization Efficiency (Tokens per Word, lower is better):
+  EN:
+    Switchable: 1.462 tokens/word
+    Monolingual: 1.462 tokens/word
+    → Switchable uses 0.0% fewer tokens per word
+  RU:
+    Switchable: 1.925 tokens/word
+    Monolingual: 1.925 tokens/word
+    → Switchable uses 0.0% fewer tokens per word
+
+Performance Comparison:
+  EN: Monolingual model is 111.61% better
+  RU: Monolingual model is 99.00% better
+  Combined: Switchable model is 22.07% better
+
+Training Losses:
+  See the 'training_losses.png' file for a visualization of training losses.
