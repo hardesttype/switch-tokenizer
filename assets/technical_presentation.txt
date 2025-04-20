@@ -63,15 +63,13 @@
       \hline
       \textbf{Method} & \textbf{Approach} & \textbf{Key Advantages} \\
       \hline
-      Zero-Shot Tokenizer Transfer & Transfers pretrained model to new tokenizer without finetuning & Enables switching tokenizers post-training with minimal performance loss \\
+      Zero-Shot Tokenizer Transfer & Transfers pretrained model to new tokenizer without finetuning & Enables switching tokenizers post-training with minimal performance loss using hypernetwork\\
       \hline
       LazyLLM & Dynamic token pruning during inference & Reduces computation for long contexts by 2-4x while preserving quality \\
       \hline
       ReTok & Replaces original tokenizer with more efficient one & Improves context length by up to 2x with minimal perplexity degradation \\
       \hline
       MRT5 & Dynamic token merging for byte-level models & Processes longer contexts efficiently while maintaining byte-level precision \\
-      \hline
-      Dynamic Tokenization & Retrofits LLMs with specialized tokenizers & Enables specialized encoding for different domains/languages without retraining \\
       \hline
     \end{tabular}
   \end{center}
